@@ -1,0 +1,17 @@
+{
+  "name": "疾风机械猎豹",
+  "creator": "Original Blender procedural sculpt / Codex",
+  "bones": 18,
+  "vertices": 11456,
+  "triangles": 22528,
+  "clips": [
+    "Idle",
+    "Run",
+    "Charge",
+    "Stunned",
+    "Celebrate"
+  ],
+  "rodin_used": false,
+  "rig": "Rigid skin weights; articulated quadruped, head and three-part tail",
+  "export": "gale-guardian.glb"
+}

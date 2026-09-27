@@ -1,0 +1,9 @@
+/* v3.13: the circuit uses the main input and HUD, including touch controls. */
+#circuit-status{margin:12px 0 0;padding:10px 0 0;border-top:1px solid #b3d1ad55;color:#f4ddb0;font-size:12px;line-height:1.65}
+.circuit-choice{display:block;width:100%;margin:10px 0;text-align:left;line-height:1.8}
+.in-circuit .chapter-dots{display:none}.in-circuit .guide-voice{display:none}
+.in-circuit .objective{width:310px}.in-circuit #echo:disabled,.in-circuit #dash:disabled{display:none}
+.in-circuit .controls>.actions{grid-template-columns:repeat(2,auto)}
+.in-circuit #wallet-count{color:#d5f0d4;font-size:11px}
+@media(max-width:600px){.in-circuit .objective{width:calc(100% - 28px);padding:11px 14px;top:78px;left:14px}.in-circuit .objective h2{font-size:16px;margin:4px 0}.in-circuit .objective>p#objective{font-size:11px;line-height:1.6;margin:4px 0}.in-circuit .objective .journey-progress,.in-circuit #venue-status,.in-circuit .ability-status,.in-circuit #chapter-number{display:none}.in-circuit .coin-wallet{display:none}.in-circuit #circuit-status{font-size:11px;margin-top:6px;padding-top:6px}.in-circuit .objective>div{padding-top:4px;border:0}.in-circuit .actions button{min-width:66px}.in-circuit .controls{bottom:25px}.in-circuit .interact{bottom:126px}.in-circuit~#toast{bottom:196px;max-width:calc(100% - 28px);font-size:11px}}
+@media(min-width:601px){.in-circuit .objective{top:100px;width:310px;padding:13px 16px}.in-circuit .objective h2{font-size:17px;margin:5px 0 7px}.in-circuit .objective #objective{margin:0 0 7px;line-height:1.55}.in-circuit #chapter-number,.in-circuit #venue-status,.in-circuit .ability-status{display:none}.in-circuit .journey-progress{margin-bottom:5px;font-size:10px}.in-circuit .coin-wallet{padding-top:6px;gap:8px}.in-circuit .coin-wallet b{font-size:11px}.in-circuit #circuit-status{margin-top:7px;padding-top:7px;line-height:1.5}.in-circuit .objective>div{padding-top:6px}}

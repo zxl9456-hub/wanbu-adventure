@@ -1,0 +1,39 @@
+{
+  "title": "逐光加速 · KEEP MOVING",
+  "bpm": 140,
+  "meter": "4/4",
+  "key": "D minor",
+  "bars": 32,
+  "duration": 54.857142857142854,
+  "sampleRate": 44100,
+  "frames": 2419200,
+  "stems": [
+    "keep-moving.m4a",
+    "keep-moving-drive.m4a"
+  ],
+  "sfx": [
+    "jump",
+    "land",
+    "dash",
+    "throw",
+    "catch",
+    "bounce",
+    "whistle",
+    "collect",
+    "ui",
+    "success",
+    "complete",
+    "fail",
+    "echo",
+    "gate",
+    "step"
+  ],
+  "origin": "Original procedural composition; no external recordings or samples",
+  "mainRms": 0.1522047072649002,
+  "fullRms": 0.15584349632263184,
+  "fullPeak": 0.8199999928474426,
+  "seams": {
+    "main": 0.0011494567152112722,
+    "drive": 0.0013087205588817596
+  }
+}

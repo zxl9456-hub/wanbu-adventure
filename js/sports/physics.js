@@ -7,17 +7,17 @@ export class SportsPhysics{
  reset(save=null){
   this.time=Number.isFinite(save?.time)?Math.max(0,save.time):0;this.checkpoint=Number.isInteger(save?.checkpoint)?Math.max(0,Math.min(2,save.checkpoint)):0;
   this.collected=new Set((save?.collected||[]).filter(id=>COLLECTIBLES.some(c=>c.id===id)));this.retries=Math.max(0,Math.floor(save?.retries||0));
-  this.finished=false;this.deathTimer=0;this.jumpBuffer=0;this.coyote=0;this.dashTimer=0;this.dashCooldown=0;this.airDashed=false;this.facing=1;
+  this.shoes?.resetMotion();this.finished=false;this.deathTimer=0;this.jumpBuffer=0;this.coyote=0;this.dashTimer=0;this.dashCooldown=0;this.airDashed=false;this.facing=1;
   updatePlatforms(this.platforms,this.time);this.placeAtCheckpoint();
  }
- placeAtCheckpoint(){const c=CHECKPOINTS[this.checkpoint];this.x=c.x;this.y=c.y;this.vx=0;this.vy=0;this.grounded=true;this.groundId=['start','cp1','cp2'][this.checkpoint];this.coyote=.12;this.dashTimer=0;this.dashCooldown=0;this.airDashed=false;this.invulnerable=.65;this.jumpBuffer=0;}
+ placeAtCheckpoint(){const c=CHECKPOINTS[this.checkpoint];this.shoes?.resetMotion();this.x=c.x;this.y=c.y;this.vx=0;this.vy=0;this.grounded=true;this.groundId=['start','cp1','cp2'][this.checkpoint];this.coyote=.12;this.dashTimer=0;this.dashCooldown=0;this.airDashed=false;this.invulnerable=.65;this.jumpBuffer=0;}
  jump(){if(!this.finished&&!this.deathTimer)this.jumpBuffer=.16;}
  dash(){if(this.finished||this.deathTimer||this.dashCooldown>0||(!this.grounded&&this.airDashed))return false;this.dashTimer=PHYSICS.dashDuration;this.dashCooldown=PHYSICS.dashCooldown;this.airDashed=!this.grounded;this.onEvent('dash');return true;}
  retry(){if(this.deathTimer||this.finished)return;this.retries++;this.deathTimer=.58;this.vx=0;this.vy=0;this.jumpBuffer=0;this.onEvent('fall');}
  snapshot(){return {checkpoint:this.checkpoint,time:this.time,collected:[...this.collected],retries:this.retries};}
  step(dt,{axis=0,jumpHeld=false}={}){
   if(this.finished)return;
-  this.time+=dt;updatePlatforms(this.platforms,this.time);
+  this.shoes?.tick(dt,this,{move:axis});this.time+=dt;updatePlatforms(this.platforms,this.time);
   if(this.deathTimer){this.deathTimer=Math.max(0,this.deathTimer-dt);if(!this.deathTimer){this.placeAtCheckpoint();this.onEvent('respawn');}return;}
   this.invulnerable=Math.max(0,this.invulnerable-dt);this.dashCooldown=Math.max(0,this.dashCooldown-dt);this.dashTimer=Math.max(0,this.dashTimer-dt);
   if(axis)this.facing=Math.sign(axis);
@@ -25,7 +25,7 @@ export class SportsPhysics{
   if(this.jumpBuffer>0&&this.coyote>0){this.vy=PHYSICS.jump;this.grounded=false;this.groundId=null;this.coyote=0;this.jumpBuffer=0;this.onEvent('jump');}
   this.jumpBuffer=Math.max(0,this.jumpBuffer-dt);
   const oldX=this.x,oldY=this.y;
-  this.vx=this.dashTimer?this.facing*PHYSICS.dashSpeed:approach(this.vx,axis*PHYSICS.speed,(this.grounded?44:27)*dt);
+  this.vx=this.dashTimer?this.facing*PHYSICS.dashSpeed:approach(this.vx,axis*PHYSICS.speed*(this.grounded?(this.shoes?.speedMultiplier||1):1),(this.grounded?44:27)*dt);
   this.x=Math.max(-4,Math.min(190,this.x+this.vx*dt));
   if(!jumpHeld&&this.vy>4.6)this.vy=4.6;
   this.vy-=PHYSICS.gravity*dt;this.y+=this.vy*dt;

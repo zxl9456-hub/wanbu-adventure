@@ -1,3 +1,4 @@
+import {makeEquipmentWorld} from '../equipment/world.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {makeArrivalRoom,attachArrivalBuilding,updateArrival} from '../arrival/world.js';
 import {CIRCUIT_ROOMS} from '../circuit/content.js';
@@ -35,7 +36,7 @@ export class CampusWorld extends MetroidWorld{
    this.markers.push({id,ring,s,t,y});
   }
   for(const [room,r]of Object.entries(CAMPUS_ROOMS))for(const item of r.items){
-   if(item.type!=='campus'||['roots','finale','brand','power','water','innovation','dash-kit','venue','guardian'].includes(item.kind))continue;
+   if(item.type!=='campus'||['shoe-shop','roots','finale','brand','power','water','innovation','dash-kit','venue','guardian'].includes(item.kind))continue;
    const g=this.roomViews[room].interact.get(item.id);
    this.box(.12,1.05,.14,this.warm,0,.55,-.65,g);this.box(1.35,.88,.15,this.cream,0,1.36,-.65,g);
    const t=this.label(item.label.replace('阅读：',''),2.5,.34,'#f6e3c0',g);t.position.set(0,2.28,-.65);
@@ -43,6 +44,7 @@ export class CampusWorld extends MetroidWorld{
   }
   attachArrivalBuilding(this,(await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('./assets/arrival/anta-campus.glb')).scene);
   this.roomViews.hub.root.traverse(o=>{if(o.userData.campusLabel)o.visible=false;});
+  this.equipmentView=await makeEquipmentWorld(this);
   this.guardianView=new GuardianView(this,await new GLTFLoader().loadAsync('./assets/guardian/gale-guardian.glb'));
   this.circuitView=new CircuitView(this);this.combatView=new CombatView(this);this.makeCoinTrail();this.makeVenueGate();this.ceremony=new CampusCeremony(this);this.modelsRefined=false;
  }
@@ -180,7 +182,7 @@ export class CampusWorld extends MetroidWorld{
   this.combatState=state;updateArrival(this,state);
   if(this.ceremonyTime!==undefined){this.ceremony.render(this.ceremonyTime);return;}
   if(this.ready&&this.flame){
-   this.circuitView.update(state);this.guardianView.update(dt,state);this.venueBarrier.visible=!state.venueUnlocked;
+   this.equipmentView?.update(dt,state);this.circuitView.update(state);this.guardianView.update(dt,state);this.venueBarrier.visible=!state.venueUnlocked;
    for(const c of this.coinViews){c.g.visible=!state.coins.has(c.id);c.g.position.y=c.y+Math.sin(this.tick*2+c.y)*.07;c.g.rotation.y=Math.sin(this.tick*1.5)*.45;}
    for(const lamp of this.venueLights)lamp.m.color.set(state.finished||lamp.key==='guardian'&&state.guardianWon||state.stamps.includes(lamp.key)?0xffd798:0x5c766b);
    this.dashCrystal.visible=!state.progress.dash;this.dashCrystal.rotation.y+=dt;

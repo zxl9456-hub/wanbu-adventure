@@ -18,7 +18,7 @@ const station=(id,x,y,label,kind)=>({id,x,y,label,type:'campus',kind});
 const route=(id,x,y,label,room,toX=3,toY=0)=>({id,x,y,label,type:'route',room,toX,toY});
 const copy=(id,items,extra={})=>({...ROOMS[id],enemies:[],chips:[],items,gate:null,wall:null,trial:null,relay:null,heart:null,...extra});
 export const CAMPUS_ROOMS={
- hub:copy('hub',[station('roots',18,0,'连接一个总部、两个中心','roots'),station('torch',24,0,'点亮万步之光','finale'),route('gym',11,2.3,'前往健身中心','energy'),{...route('hub-garden',15,2.3,'已开启的花园捷径','garden'),requires:'shortcut'},station('lobby-story',4,0,'阅读：以火炬为魂','lobby')],{subtitle:'以火炬为魂，以足迹为线'}),
+ hub:copy('hub',[station('shoe-shop',8,0,'运动装备 · 金币购买 / 免费试穿','shoe-shop'),station('roots',18,0,'点亮三地连接台 · 按 F 后点击三张卡片','roots'),station('torch',24,0,'点亮万步之光','finale'),route('gym',11,2.3,'前往健身中心','energy'),{...route('hub-garden',15,2.3,'已开启的花园捷径','garden'),requires:'shortcut'},station('lobby-story',4,0,'阅读：以火炬为魂','lobby')],{subtitle:'以火炬为魂，以足迹为线'}),
  lab:copy('lab',[{...route('archive',3,5,'前往足迹档案','archive'),requires:'doubleJump'},{...route('to-atrium',31,0,'双点同步后前往中庭','atrium'),requires:'relayOpen'},station('dash-kit',22,2.2,'领取脉冲冲刺','dash-kit'),station('echo-help',27.8,0,'查看回声同步提示','echo-help')],{subtitle:'跳上展台取得冲刺 · 返回这里与回声协作',gate:{x:6,y:0},relay:{flag:'relayOpen',pads:[{x:25.7,y:0},{x:30,y:0}],hold:1.1}}),
  core:copy('core',[station('innovation',11.5,5.7,'研发终端 · ANTA 科技密室','innovation'),station('research',4,0,'阅读：全球研发网络','research')],{subtitle:'发现 · 验证 · 共创'}),
  atrium:copy('atrium',[route('garden-top',29,7.3,'前往空中花园','garden')],{subtitle:'二段跳跃 · 在空中再迈出一步',platforms:[ROOMS.atrium.platforms[0],{id:'p1',left:11,right:17,y:2},{id:'p2',left:20,right:26,y:5.3},{id:'top',left:25,right:34,y:7.3}]}),

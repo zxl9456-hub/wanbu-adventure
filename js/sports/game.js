@@ -1,3 +1,4 @@
+import {ShoeKit} from '../equipment/state.js';
 import {AdventureSession} from '../adventure/session.js';
 import * as THREE from 'three';
 import {PixelCorgi} from '../character.js';
@@ -26,10 +27,11 @@ class SportsCorgi extends PixelCorgi{
 export class SportsGame{
  constructor(world,corgi,audio){
   this.session=new AdventureSession('sports',SAVE);this.bestKey=this.session.campus?this.session.key+'-best':BEST;this.world=world;this.audio=audio;this.keys=new Set();this.holds=new Set();this.joy=new THREE.Vector2();this.ui=this;this.active=false;this.paused=false;this.accumulator=0;this.stage=-1;this.lastSave=0;
-  this.physics=new SportsPhysics((event,data)=>this.event(event,data));world.setupCourse(this.physics);this.character=new SportsCorgi(world,corgi);world.resetCamera(this.physics);this.character.updateSports(.01,this.physics);
+  this.physics=new SportsPhysics((event,data)=>this.event(event,data));if(this.session.campus)this.physics.shoes=new ShoeKit(this.session.shoes,Infinity);world.setupCourse(this.physics);this.character=new SportsCorgi(world,corgi);world.resetCamera(this.physics);this.character.updateSports(.01,this.physics);
   this.dialog=$('dialog');this.soundControls=new SoundControls(audio,this);
   const openSound=this.soundControls.open.bind(this.soundControls),closeSound=this.soundControls.close.bind(this.soundControls);
   this.soundControls.open=()=>{this.clearInput();openSound();};this.soundControls.close=(focus=true)=>{this.clearInput();closeSound(focus);};
+  if(this.physics.shoes?.equipped==='c202'){this.shoeStatus=document.createElement('p');this.shoeStatus.id='shoe-course-status';this.shoeStatus.style.cssText='position:fixed;right:18px;top:78px;background:#17372de8;color:#ffdb86;padding:8px 12px;border-radius:16px;font-size:11px;pointer-events:none';this.shoeStatus.textContent='逐光疾跑 · 地面提速，空中稳定';document.body.append(this.shoeStatus);}
   this.bind();this.updateHUD();this.refreshEntry();
  }
  refreshEntry(){const save=this.session.load();$('continue').hidden=!(save?.version===COURSE_VERSION);const best=read(this.bestKey);$('best-intro').textContent=best?`个人最佳 ${timeText(best.time)} · 足迹 ${best.coins}/36`:'36 枚足迹 · 3 枚隐藏徽章 · 2 个检查点';}
@@ -37,7 +39,7 @@ export class SportsGame{
  start(resume=false){
   if(!this.session.valid())return;if(this.session.campus)resume=true;const save=resume?this.session.load():null;this.physics.reset(save?.version===COURSE_VERSION?save:null);this.active=true;this.paused=false;this.stage=-1;this.accumulator=0;this.lastSave=this.physics.time;
   this.clearInput();this.world.resetCamera(this.physics);this.audio.start();this.audio.setState(false);document.body.classList.add('playing');$('intro').hidden=true;$('hud').hidden=false;
-  $('pause').disabled=false;this.dialog.close();this.world.canvas.focus();this.updateHUD();this.toast(resume?'已回到最近检查点':'长按空格跳得更高 · 方向键控制落点',4.5);if(this.session.completed){this.physics.finished=true;this.physics.x=FINISH_X;this.physics.y=this.world.floorBelow(FINISH_X,100)||0;this.result();}else this.save();
+  $('pause').disabled=false;this.dialog.close();this.world.canvas.focus();this.updateHUD();this.toast(this.physics.shoes?.equipped==='c202'?'逐光疾跑已穿戴 · 同向奔跑蓄能，最高提速 25%':resume?'已回到最近检查点':'长按空格跳得更高 · 方向键控制落点',4.5);if(this.session.completed){this.physics.finished=true;this.physics.x=FINISH_X;this.physics.y=this.world.floorBelow(FINISH_X,100)||0;this.result();}else this.save();
  }
  save(){if(this.active&&!this.physics.finished)this.session.save({version:COURSE_VERSION,...this.physics.snapshot()});}
  entry(){this.save();this.clearInput();this.soundControls.close(false);this.dialog.close();this.active=false;this.paused=false;document.body.classList.remove('playing');$('intro').hidden=false;$('hud').hidden=true;$('pause').disabled=true;this.refreshEntry();$('start').focus();}
@@ -105,6 +107,7 @@ export class SportsGame{
   if(this.session.campus)$('play-again').textContent='查看主线去向 →';$('play-again').onclick=()=>{if(this.session.campus){this.showDialog('<h2>继续这段冒险</h2><p>步道徽记已经保存。返回园区继续解锁连廊。</p>');}else this.start();};$('result-entry').onclick=()=>this.entry();
  }
  updateHUD(){
+  if(this.shoeStatus){this.shoeStatus.hidden=!this.active;this.shoeStatus.textContent='逐光疾跑 · '+this.physics.shoes.status;}
   const p=this.physics,{coins,medals}=this.counts,stage=Math.max(0,STAGES.findLastIndex(s=>p.x>=s.x));
   $('coin-count').textContent=String(coins).padStart(2,'0');$('medal-count').textContent=medals;$('timer').textContent=timeText(p.time);
   $('route-fill').style.width=Math.min(100,Math.max(0,p.x/FINISH_X*100))+'%';$('dash-meter').style.transform=`scaleX(${1-p.dashCooldown/PHYSICS.dashCooldown})`;$('dash-action').classList.toggle('cooling',p.dashCooldown>0);

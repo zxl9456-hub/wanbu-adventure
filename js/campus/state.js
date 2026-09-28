@@ -1,3 +1,4 @@
+import {ShoeKit} from '../equipment/state.js';
 import {ArrivalState} from '../arrival/state.js';
 import {CircuitState} from '../circuit/state.js';
 import {CLAW,DEFEAT_TIME} from './combat.js';
@@ -21,7 +22,8 @@ export class CampusState extends Expedition{
  get cameraAnchor(){return this.roomId==='court'&&this.circuit?.fighting?(this.player.x+this.circuit.enemy.x)/2:undefined;}
  get cameraSpan(){return this.roomId==='court'&&this.circuit?.fighting?Math.max(18,Math.abs(this.player.x-this.circuit.enemy.x)+6):18;}
  get clawUnlocked(){return this.venueUnlocked||this.circuit?.claw===true;}
- get availableCoins(){return this.totalCoins-(this.circuit?.spent||0);}
+ get availableCoins(){return this.totalCoins-(this.circuit?.spent||0)-(this.shoes?.spent||0);}
+ get speed(){return super.speed*(this.player?.grounded?(this.shoes?.speedMultiplier||1):1);}
  constructor(saved={}){
   super();if(!saved||typeof saved!=='object'||Array.isArray(saved))saved={};
   this.arrival=new ArrivalState(saved.arrival,Number.isInteger(saved.version)&&saved.version<6||Array.isArray(saved.sites)&&saved.sites.some(id=>SITES.some(site=>site[0]===id)));
@@ -48,6 +50,7 @@ export class CampusState extends Expedition{
   this.venueUnlocked=saved.venueUnlocked===true&&this.totalCoins>=VENUE_COST&&this.stamps.includes('green')&&this.progress.relayOpen;
   this.guardianWon=saved.guardianWon===true&&this.venueUnlocked;
   this.circuit.restorePurchases(saved.circuit?.purchases,this.totalCoins);
+  this.shoes=new ShoeKit(saved.shoes,this.totalCoins-this.circuit.spent);
   this.guardian=new GaleGuardian();if(this.guardianWon){this.guardian.phase='won';this.guardian.hp=0;this.guardian.defeatTime=DEFEAT_TIME;};
   this.guardianAttempts=Number.isInteger(saved.guardianAttempts)?Math.max(0,Math.min(9999,saved.guardianAttempts)):0;
   this.finished=saved.finished===true&&this.circuit.done&&this.sportsDone&&this.portalDone&&this.teamDone&&this.stamps.length===5&&this.progress.shortcut&&this.guardianWon;
@@ -79,7 +82,7 @@ export class CampusState extends Expedition{
    this.player.x=Math.max(0,Math.min(this.room.width,this.player.x));this.player.vx=0;
    if(!this.routeHintTime){this.emit('hint',{text:this.lockedRoute(id)});this.routeHintTime=3;}return false;
   }
-  super.enter(id,x,y);this.claw=null;this.attackQueued=false;this.player.attackTime=0;this.player.attackCooldown=0;this.enemies=[];this.boss=null;this.passTime=0;this.safePoint={x,y};this.circuit?.onEnter(id,this);return true;
+  this.shoes?.resetMotion();super.enter(id,x,y);this.claw=null;this.attackQueued=false;this.player.attackTime=0;this.player.attackCooldown=0;this.enemies=[];this.boss=null;this.passTime=0;this.safePoint={x,y};this.circuit?.onEnter(id,this);return true;
  }
  hurt(damage,direction,fall){if(fall){this.recovering=true;this.falls++;this.emit('hint',{text:'回到刚才的落脚点 · 已收集的信号与能力保留。'});}}
  handleGuardianEvent(type,data){
@@ -88,18 +91,18 @@ export class CampusState extends Expedition{
   if(type==='guardian-hit')this.player.invulnerable=1.7;
   this.emit(type,data);
  }
- updateEnemies(){} updateBoss(dt){if(this.roomId==='arena'&&this.guardian){const emit=(type,data)=>this.handleGuardianEvent(type,data);this.guardian.strike(this.player,this.claw,emit);this.guardian.update(dt,this.player,emit);}} updateWall(){}
+ updateEnemies(){} updateBoss(dt){if(this.roomId==='arena'&&this.guardian){const emit=(type,data)=>this.handleGuardianEvent(type,data);this.guardian.strike(this.player,this.claw,emit);this.guardian.update(dt,this.player,emit,()=>this.shoes.absorb(this));if(this.guardian.phase==='dash')this.shoes.dodge(this.player,this.guardian.threat,this);}} updateWall(){}
  update(dt,input={}){if(input.attackPressed)this.attackQueued=true;super.update(dt,input);}
  attack(){
   const p=this.player;
   if(!this.clawUnlocked||this.circuit?.phase==='failed'||p.attackCooldown>1e-6||p.dashTime>0||p.hurtTime>0||this.guardian?.phase==='defeated'||this.roomId==='arena'&&['failed','won'].includes(this.guardian.phase))return false;
   p.attackTime=CLAW.duration;p.attackCooldown=CLAW.cooldown;p.attackDirection='front';
   const facing=this.input?.move?Math.sign(this.input.move):p.facing;p.facing=facing;
-  this.claw={id:++this.attackId,elapsed:0,facing,hit:false};this.emit('claw-attack');return true;
+  this.claw={id:++this.attackId,elapsed:0,facing,hit:false,boosted:this.shoes.consumeCounter()};this.emit('claw-attack');return true;
  }
  get totalCoins(){return coinTotal(this);}
  nearby(){if(this.guardian?.active||this.circuit?.fighting)return null;const item=super.nearby();return item?.kind==='practice'&&!this.circuit?.launcherWon?null:item;}
- startGuardian(){if(this.roomId!=='arena'||!this.venueUnlocked||this.guardian.active)return false;this.guardian=new GaleGuardian(this.guardianWon?++this.guardianAttempts:0);this.guardian.start();this.claw=null;this.attackQueued=false;Object.assign(this.player,{x:13,y:0,vx:0,vy:0,grounded:true,dashTime:0,attackTime:0,attackCooldown:0,invulnerable:0,facing:1});this.echo.clear();this.emit('guardian-start');this.emit('save');return true;}
+ startGuardian(){if(this.roomId!=='arena'||!this.venueUnlocked||this.guardian.active)return false;this.guardian=new GaleGuardian(this.guardianWon?++this.guardianAttempts:0);this.guardian.start();this.shoes.resetEncounter();this.claw=null;this.attackQueued=false;Object.assign(this.player,{x:13,y:0,vx:0,vy:0,grounded:true,dashTime:0,attackTime:0,attackCooldown:0,invulnerable:0,facing:1});this.echo.clear();this.emit('guardian-start');this.emit('save');return true;}
  retreatGuardian(){if(!this.guardian.active)return false;this.guardian.phase=this.guardianWon?'won':'idle';if(this.guardianWon){this.guardian.hp=0;this.guardian.defeatTime=DEFEAT_TIME;}this.enter('garden',29,0);this.emit('save');return true;}
  dash(){if(!this.progress.dash){this.emit('hint',{text:'冲刺模块在水平连廊的右侧高台。先用跳跃登上展台。'});return;}super.dash();}
  acceptLab(raw){
@@ -120,7 +123,7 @@ export class CampusState extends Expedition{
  get mission(){
   const goal=(chapter,room,x,y,label,text)=>({chapter,room,x,y,label,text});
   if(this.roomId==='arrival')return this.arrival.objective(this);
-  if(this.sites.size<3)return goal('roots','hub',18,0,'三个协同节点','先连接晋江、厦门和上海，再从大堂高台进入健身中心');
+  if(this.sites.size<3)return goal('roots','hub',18,0,'地面三地连接台 · F','向右走到火炬左侧的连接台，按 F；在弹窗分别点亮晋江、厦门、上海三张卡片');
   if(!this.circuit.done){const [room,x,y,label,text]=this.circuit.objective();return goal('roots',room,x,y,label,text);}
   if(!this.sportsDone)return goal('roots','energy',16,0,'云端步道入口','从大堂高台进入健身中心，完成完整跑酷，取得步道徽记');
   if(!this.progress.dash)return goal('walk','lab',22,2.2,'冲刺展台','跳上水平连廊右侧高台，按 F 领取冲刺');
@@ -143,6 +146,7 @@ export class CampusState extends Expedition{
  }
  objective(){return this.mission.text;}
  step(dt){
+  this.shoes?.tick(dt,this.player,this.input);
   this.arrival?.before(this);
   this.circuit?.beforeStep(dt,this);
   if(this.attackQueued){this.attackQueued=false;this.attack();}
@@ -202,5 +206,5 @@ export class CampusState extends Expedition{
   this.turns[index]=(this.turns[index]+1)%4;this.emit('save');return true;
  }
  guide(room){if(this.circuit?.fighting||this.guardian?.active||!this.progress.shortcut||!this.visited.has(room)||!this.canEnter(room))return false;return this.enter(room,room==='core'?29:3,0);}
- save(){return {version:6,arrival:this.arrival.snapshot(),circuit:this.circuit.snapshot(),storySeen:this.storySeen,sportsDone:this.sportsDone,portalDone:this.portalDone,teamDone:this.teamDone,legacyBrandStamp:this.legacyBrandStamp,activeChallenge:this.activeChallenge,coins:[...this.coins],venueUnlocked:this.venueUnlocked,guardianWon:this.guardianWon,guardianAttempts:this.guardianAttempts,runId:this.runId,dash:this.progress.dash,gate:this.progress.gate,doubleJump:this.progress.doubleJump,relayOpen:this.progress.relayOpen,shortcut:this.progress.shortcut,sites:[...this.sites],walks:[...this.walks],samples:[...this.samples],innovation:this.innovation,brandStep:this.brandStep,power:this.power,turns:[...this.turns],finished:this.finished,elapsed:this.elapsed,visited:[...this.visited],resume:this.guardian.active?{room:'arena',x:4,y:0}:this.safeResume()};}
+ save(){return {version:7,shoes:this.shoes.snapshot(),arrival:this.arrival.snapshot(),circuit:this.circuit.snapshot(),storySeen:this.storySeen,sportsDone:this.sportsDone,portalDone:this.portalDone,teamDone:this.teamDone,legacyBrandStamp:this.legacyBrandStamp,activeChallenge:this.activeChallenge,coins:[...this.coins],venueUnlocked:this.venueUnlocked,guardianWon:this.guardianWon,guardianAttempts:this.guardianAttempts,runId:this.runId,dash:this.progress.dash,gate:this.progress.gate,doubleJump:this.progress.doubleJump,relayOpen:this.progress.relayOpen,shortcut:this.progress.shortcut,sites:[...this.sites],walks:[...this.walks],samples:[...this.samples],innovation:this.innovation,brandStep:this.brandStep,power:this.power,turns:[...this.turns],finished:this.finished,elapsed:this.elapsed,visited:[...this.visited],resume:this.guardian.active?{room:'arena',x:4,y:0}:this.safeResume()};}
 }

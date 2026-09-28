@@ -3,7 +3,7 @@ import {ACTIVITIES,CAMPUS_SAVE,activityUnlocked,completedActivity} from '../camp
 export class AdventureSession{
  constructor(id,standaloneKey,{storage=globalThis.localStorage,search=globalThis.location?.search||''}={}){
   this.id=id;this.config=ACTIVITIES[id];this.storage=storage;this.campus=new URLSearchParams(search).get('from')==='campus';this.key=this.campus?this.config.key:standaloneKey;
-  const master=this.read(CAMPUS_SAVE);this.runId=master?.runId;this.locked=this.campus&&(!activityUnlocked(id,master)||master.activeChallenge!==id);
+  const master=this.read(CAMPUS_SAVE);this.runId=master?.runId;this.shoes=master?.shoes;this.locked=this.campus&&(!activityUnlocked(id,master)||master.activeChallenge!==id);
   const data=this.read(this.key);this.saved=this.campus?(data?.campaign===this.runId?data:null):data;
   this.returnURL='./campus.html?resume=world&from='+id;
  }

@@ -59,8 +59,8 @@ export class CircuitState{
   const p=state.player,raft=this.room==='pool'&&p.grounded?this.rooms.pool.platforms.find(f=>f.id.startsWith('raft')&&near(f.y,p.y,.05)&&p.x>f.left-.4&&p.x<f.right+.4):null,old=raft?.y;this.updateWater(dt);if(raft)p.y+=raft.y-old;
  }
  hitInFront(state,x,y,extra=0){const a=state.claw,p=state.player;if(!a||a.elapsed<CLAW.windup||a.elapsed>CLAW.activeUntil)return false;const d=(x-p.x)*a.facing;return d>=-.4&&d<CLAW.reach+extra&&Math.abs(p.y+1.1-y)<1.2;}
- startPhase(name,state){this.phase=name;this.enemy={x:29,y:0,hp:name==='runner'?3:2,maxHP:name==='runner'?3:2,state:'windup',timer:1.5,face:-1,lastHit:0};this.shots=[];state.emit('hint',{text:name==='runner'?'冲线机：跳过地面冲锋，在它停下时爪击。':'发球机：护盾挡住爪击；面向右边，J 把飞来的球打回去。'});}
- hurt(state){if(this.invulnerable>0||this.phase==='failed')return;this.hearts--;this.invulnerable=1.5;state.player.invulnerable=1.5;state.emit('circuit-hit',{hearts:this.hearts});if(this.hearts<=0){this.phase='failed';this.shots=[];state.emit('circuit-failed');}}
+ startPhase(name,state){state.shoes?.resetEncounter();this.phase=name;this.enemy={x:29,y:0,hp:name==='runner'?3:2,maxHP:name==='runner'?3:2,state:'windup',timer:1.5,face:-1,lastHit:0};this.shots=[];state.emit('hint',{text:name==='runner'?'冲线机：跳过地面冲锋，在它停下时爪击。':'发球机：护盾挡住爪击；面向右边，J 把飞来的球打回去。'});}
+ hurt(state){if(this.invulnerable>0||this.phase==='failed')return;if(state.shoes?.absorb(state)){this.invulnerable=1.5;state.player.invulnerable=1.5;return;}this.hearts--;this.invulnerable=1.5;state.player.invulnerable=1.5;state.emit('circuit-hit',{hearts:this.hearts});if(this.hearts<=0){this.phase='failed';this.shots=[];state.emit('circuit-failed');}}
  retry(state){if(state.roomId!=='court')return false;this.onEnter('court',state);Object.assign(state.player,{x:12,y:0,vx:0,vy:0,grounded:true,attackCooldown:0});state.claw=null;state.safePoint={x:12,y:0};state.emit('save');return true;}
  tick(dt,state){
   this.time+=dt;this.invulnerable=Math.max(0,this.invulnerable-dt);this.ballCooldown=Math.max(0,this.ballCooldown-dt);const p=state.player,room=state.roomId;
@@ -79,16 +79,16 @@ export class CircuitState{
    const e=this.enemy;
    if(this.fighting){e.timer-=dt;
     if(this.phase==='runner'){
-     if(e.state==='windup'&&e.timer<=0){e.state='rush';state.emit('circuit-rush');}
-     if(e.state==='rush'){e.x+=e.face*11*dt;if(Math.abs(e.x-p.x)<1.15&&p.y<1.55)this.hurt(state);if(e.x<=12||e.x>=29){e.x=Math.max(12,Math.min(29,e.x));e.state='recover';e.timer=2.8;}}
-     if(e.state==='recover'&&this.hitInFront(state,e.x,1.1)&&state.claw.id!==e.lastHit){e.lastHit=state.claw.id;e.hp--;state.emit('circuit-damage',{x:e.x,y:1.8});if(e.hp===0){this.award('runnerWon',state,'冲线机已击败 · 接下来，把训练球打回发球机');this.phase='intermission';this.phaseTime=2;}}
+     if(e.state==='windup'&&e.timer<=0){e.state='rush';e.threat={x:e.x};state.emit('circuit-rush');}
+     if(e.state==='rush'){e.x+=e.face*11*dt;e.threat.x=e.x;state.shoes?.dodge(p,e.threat,state);if(Math.abs(e.x-p.x)<1.15&&p.y<1.55)this.hurt(state);if(e.x<=12||e.x>=29){e.x=Math.max(12,Math.min(29,e.x));e.state='recover';e.timer=2.8;}}
+     if(e.state==='recover'&&this.hitInFront(state,e.x,1.1)&&state.claw.id!==e.lastHit){e.lastHit=state.claw.id;e.hp=Math.max(0,e.hp-(state.claw.boosted?2:1));state.emit('circuit-damage',{x:e.x,y:1.8});if(e.hp===0){this.award('runnerWon',state,'冲线机已击败 · 接下来，把训练球打回发球机');this.phase='intermission';this.phaseTime=2;}}
      if(e.state==='recover'&&e.timer<=0){e.face=e.x>20?-1:1;e.state='windup';e.timer=1.4;}
     }else if(e.timer<=0){this.shots.push({x:28.4,y:1.1,vx:-7,owner:'enemy',kind:'return',life:5});e.state='windup';e.timer=2.8;state.emit('circuit-shot');}
    }
    if(this.phase==='intermission'){this.phaseTime-=dt;if(this.phaseTime<=0){this.startPhase('launcher',state);p.invulnerable=1.5;this.invulnerable=1.5;}}
   }
   for(const b of this.shots){
-   const prev=b.x;b.life-=dt;
+   const prev=b.x;b.life-=dt;if(b.owner==='enemy')state.shoes?.dodge(p,b,state);
    if(b.owner==='enemy'&&this.hitInFront(state,b.x,b.y,this.partner==='MAIA'?.5:0)&&p.facing>0){b.owner='player';b.vx=14;state.emit('circuit-reflect',{x:b.x,y:b.y});}
    b.x+=b.vx*dt;
    if(b.kind==='switch'&&spawn&&b.vx>0&&prev<=spawn.target&&b.x>=spawn.target){b.life=0;const key={energy:'target',pool:'poolSwitch',court:'courtGate'}[room];this.award(key,state,{energy:'靶心点亮！恒温泳池的门已打开',pool:'水循环已启动 · 等浮台升起，沿落脚点向右跳',court:'光门已打开 · 向右进入训练跑道'}[room]);}

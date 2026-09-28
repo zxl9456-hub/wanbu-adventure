@@ -11,7 +11,10 @@ function watch(img){
   canvas.width=Math.min(width,img.naturalWidth);canvas.height=Math.max(1,Math.round(img.naturalHeight*canvas.width/img.naturalWidth));
   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,canvas.width,canvas.height);
   const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
-  for(let i=0;i<pixels.data.length;i+=4){for(let j=0;j<3;j++)pixels.data[i+j]=Math.round(pixels.data[i+j]/32)*32;}
+  for(let i=0;i<pixels.data.length;i+=4){
+   const l=.299*pixels.data[i]+.587*pixels.data[i+1]+.114*pixels.data[i+2];
+   for(let j=0;j<3;j++)pixels.data[i+j]=Math.round(Math.max(0,Math.min(255,l+(pixels.data[i+j]-l)*1.3))/32)*32;
+  }
   ctx.putImageData(pixels,0,0);img.dataset.pixelPortrait='true';img.src=canvas.toDataURL();
  };
  if(img.complete)paint();else img.addEventListener('load',paint,{once:true});

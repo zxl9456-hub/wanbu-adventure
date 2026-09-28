@@ -21,7 +21,7 @@ export const toWorld=(x,y,h=0)=>new V(x-300,h,60-y);
 export class World{
  constructor(canvas){
   this.pixelOptions=loadPixelSettings();this.canvas=canvas;this.renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance',alpha:false});
-  this.renderer.setPixelRatio(1);this.renderer.localClippingEnabled=true;this.cutaway=new THREE.Plane(new V(0,-1,0),90);this.frontCut=new THREE.Plane(new V(-.35,0,-.937),1000);this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.82;this.renderer.outputColorSpace=THREE.SRGBColorSpace;
+  this.renderer.setPixelRatio(1);this.renderer.localClippingEnabled=true;this.cutaway=new THREE.Plane(new V(0,-1,0),90);this.frontCut=new THREE.Plane(new V(-.35,0,-.937),1000);this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFShadowMap;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.82;this.renderer.outputColorSpace=THREE.SRGBColorSpace;
   this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0xbfc7b4);this.scene.fog=new THREE.FogExp2(0xc5b69a,.0018);
   this.camera=new THREE.OrthographicCamera(-100,100,60,-60,.1,1200);this.camera.position.set(160,140,210);this.lookAt=new V(3,18,-19);this.camera.lookAt(this.lookAt);this.viewHeight=152;this.cameraOffset=new V(14,22,38);this.cutawayEnabled=true;this.sightFocus=new V();this.sightDirection=new V();this.sightActive={value:0};
   this.scene.add(new THREE.HemisphereLight(0xabc5df,0x323828,.62));

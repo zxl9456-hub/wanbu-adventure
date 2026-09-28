@@ -1,3 +1,6 @@
+import './pixel/ui-images.js';
+import {createPixelPass,loadPixelSettings,resizePixelWorld,setPixelMode,preparePixelFrame} from './pixel/look.js';
+import {PIXEL_MODES} from './pixel/config.js';
 import {refineModels,planterTree} from './model-quality.js';
 import {dressArchitecture,addGardenDetails,buildCutawayCaps} from './art-direction.js';
 import {loadBrand,replaceModelBranding} from './brand.js';
@@ -17,8 +20,8 @@ export const COLORS={mint:0x83eeff,cyan:0x65ddff,gold:0xffd264};
 export const toWorld=(x,y,h=0)=>new V(x-300,h,60-y);
 export class World{
  constructor(canvas){
-  this.canvas=canvas;this.renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance',alpha:false});
-  this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));this.renderer.localClippingEnabled=true;this.cutaway=new THREE.Plane(new V(0,-1,0),90);this.frontCut=new THREE.Plane(new V(-.35,0,-.937),1000);this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.82;this.renderer.outputColorSpace=THREE.SRGBColorSpace;
+  this.pixelOptions=loadPixelSettings();this.canvas=canvas;this.renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance',alpha:false});
+  this.renderer.setPixelRatio(1);this.renderer.localClippingEnabled=true;this.cutaway=new THREE.Plane(new V(0,-1,0),90);this.frontCut=new THREE.Plane(new V(-.35,0,-.937),1000);this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.82;this.renderer.outputColorSpace=THREE.SRGBColorSpace;
   this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0xbfc7b4);this.scene.fog=new THREE.FogExp2(0xc5b69a,.0018);
   this.camera=new THREE.OrthographicCamera(-100,100,60,-60,.1,1200);this.camera.position.set(160,140,210);this.lookAt=new V(3,18,-19);this.camera.lookAt(this.lookAt);this.viewHeight=152;this.cameraOffset=new V(14,22,38);this.cutawayEnabled=true;this.sightFocus=new V();this.sightDirection=new V();this.sightActive={value:0};
   this.scene.add(new THREE.HemisphereLight(0xabc5df,0x323828,.62));
@@ -27,10 +30,11 @@ export class World{
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(1500,1500),new THREE.MeshStandardMaterial({color:0x71766a,roughness:.95}));ground.rotation.x=-Math.PI/2;ground.position.y=-1.1;ground.receiveShadow=true;this.scene.add(ground);
   this.composer=new EffectComposer(this.renderer);for(const rt of[this.composer.renderTarget1,this.composer.renderTarget2])rt.depthTexture=new THREE.DepthTexture(1,1);this.composer.addPass(new RenderPass(this.scene,this.camera));this.dof=new AdventureDepthOfField(this.camera);this.dof.enabled=localStorage.getItem('wanbu-dof')!=='off';this.composer.addPass(this.dof);this.bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.19,.38,1.6);this.bloom.enabled=true;this.composer.addPass(this.bloom);
   this.composer.addPass(new OutputPass());
-  this.grade=new ShaderPass({uniforms:{tDiffuse:{value:null},time:{value:0},strength:{value:.2}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform sampler2D tDiffuse;uniform float time;uniform float strength;varying vec2 vUv;void main(){vec3 col=texture2D(tDiffuse,vUv).rgb;float edge=smoothstep(.8,.2,distance(vUv,vec2(.5)));col*=.9+.1*edge;float grain=fract(sin(dot(vUv+time*.001,vec2(12.9898,78.233)))*43758.5453)-.5;col+=grain*.006;gl_FragColor=vec4(col,1.);}'});this.composer.addPass(this.grade);
+  this.grade=createPixelPass();this.composer.addPass(this.grade);
+  this.dof.enabled=false;this.bloom.enabled=false;
   this.fx=new THREE.Group();this.scene.add(this.fx);this.tick=0;this.playing=false;this.resize();addEventListener('resize',()=>this.resize());
  }
- resize(){let w=document.documentElement.clientWidth,h=document.documentElement.clientHeight;this.renderer.setSize(w,h,false);this.composer.setSize(w,h);this.setFrustum(this.viewHeight);}
+ resize(){let w=document.documentElement.clientWidth,h=document.documentElement.clientHeight;resizePixelWorld(this,w,h);this.setFrustum(this.viewHeight);}
  setFrustum(height){this.viewHeight=height;const aspect=innerWidth/innerHeight;this.camera.left=-height*aspect/2;this.camera.right=height*aspect/2;this.camera.top=height/2;this.camera.bottom=-height/2;this.camera.updateProjectionMatrix();}
  async load(onProgress){
   let done=0;const report=(label)=>{done++;onProgress(done/3,label);};const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -75,7 +79,10 @@ export class World{
   }
   const focus=this.playing&&player?player.clone().add(new V(0,1,0)):this.lookAt;this.dof.update(dt,focus,this.playing,this.renderer.getPixelRatio());
  }
- render(){if(!this.modelsRefined){this.modelAudit=refineModels(this.scene);this.modelsRefined=true;}this.composer.render();}
+ setPixelMode(mode){return setPixelMode(this,mode);}
+ cyclePixelMode(){const modes=Object.keys(PIXEL_MODES);return this.setPixelMode(modes[(modes.indexOf(this.pixelOptions.mode)+1)%modes.length]);}
+ get pixelLabel(){return PIXEL_MODES[this.pixelOptions.mode].name;}
+ render(){preparePixelFrame(this);if(!this.modelsRefined){this.modelAudit=refineModels(this.scene);this.modelsRefined=true;}this.composer.render();}
  project(v){const p=v.clone().project(this.camera);return {x:(p.x*.5+.5)*innerWidth,y:(-.5*p.y+.5)*innerHeight};}
  groundHeight(pos,reference=0){const n=this.nav;const sx=pos.x+300,sy=60-pos.z;const i=Math.round((sx-n.x)/n.step),j=Math.round((sy-n.y)/n.step);if(i<0||j<0||i>=n.nx||j>=n.ny)return null;const hs=n.levels.map(l=>l[j][i]).filter(v=>v!==null&&v<=reference+.65&&v>=reference-.8);return hs.length?Math.max(...hs):null;}
  staticHeight(sx,sy,level=1){const n=this.nav;let i=Math.round((sx-n.x)/n.step),j=Math.round((sy-n.y)/n.step);return n.levels[level]?.[j]?.[i]??0;}

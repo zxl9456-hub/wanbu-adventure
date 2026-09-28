@@ -36,7 +36,7 @@ export class SportsWorld extends World{
  }
  resize(){
   if(!this.composer)return;const w=document.documentElement.clientWidth,h=document.documentElement.clientHeight;
-  this.renderer.setSize(w,h,false);this.composer.setSize(w,h);this.viewWidth=w<700?22:h<500?36:43;
+  super.resize();this.viewWidth=w<700?22:h<500?36:43;
   this.setFrustum(this.viewWidth/(w/h));
  }
  async load(report=()=>{}){

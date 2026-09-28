@@ -82,7 +82,7 @@ export class CampusState extends Expedition{
    this.player.x=Math.max(0,Math.min(this.room.width,this.player.x));this.player.vx=0;
    if(!this.routeHintTime){this.emit('hint',{text:this.lockedRoute(id)});this.routeHintTime=3;}return false;
   }
-  this.shoes?.resetMotion();super.enter(id,x,y);this.claw=null;this.attackQueued=false;this.player.attackTime=0;this.player.attackCooldown=0;this.enemies=[];this.boss=null;this.passTime=0;this.safePoint={x,y};this.circuit?.onEnter(id,this);return true;
+  this.shoes?.resetMotion();super.enter(id,x,y);this.claw=null;this.attackQueued=false;this.attackBuffer=0;this.player.attackTime=0;this.player.attackCooldown=0;this.enemies=[];this.boss=null;this.passTime=0;this.safePoint={x,y};this.circuit?.onEnter(id,this);return true;
  }
  hurt(damage,direction,fall){if(fall){this.recovering=true;this.falls++;this.emit('hint',{text:'回到刚才的落脚点 · 已收集的信号与能力保留。'});}}
  handleGuardianEvent(type,data){
@@ -99,6 +99,12 @@ export class CampusState extends Expedition{
   p.attackTime=CLAW.duration;p.attackCooldown=CLAW.cooldown;p.attackDirection='front';
   const facing=this.input?.move?Math.sign(this.input.move):p.facing;p.facing=facing;
   this.claw={id:++this.attackId,elapsed:0,facing,hit:false,boosted:this.shoes.consumeCounter()};this.emit('claw-attack');return true;
+ }
+ returnToSafeSpot(){
+  if(this.guardian.active||this.circuit.fighting)return false;
+  if(this.roomId==='arrival')this.arrival.recover(this);
+  else{Object.assign(this.player,this.safePoint,{vx:0,vy:0,grounded:true,airJump:false,airDash:false,dashTime:0,jumpBuffer:0});this.echo.clear();this.claw=null;this.attackBuffer=0;this.emit('save');}
+  return true;
  }
  get totalCoins(){return coinTotal(this);}
  nearby(){if(this.guardian?.active||this.circuit?.fighting)return null;const item=super.nearby();return item?.kind==='practice'&&!this.circuit?.launcherWon?null:item;}
@@ -149,7 +155,8 @@ export class CampusState extends Expedition{
   this.shoes?.tick(dt,this.player,this.input);
   this.arrival?.before(this);
   this.circuit?.beforeStep(dt,this);
-  if(this.attackQueued){this.attackQueued=false;this.attack();}
+  if(this.attackQueued){this.attackQueued=false;this.attackBuffer=.16;}
+  if(this.attackBuffer>0){if(this.attack())this.attackBuffer=0;else this.attackBuffer=Math.max(0,this.attackBuffer-dt);}
   if(this.claw)this.claw.elapsed+=dt;
   super.step(dt);
   this.circuit?.tick(dt,this);

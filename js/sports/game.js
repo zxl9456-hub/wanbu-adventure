@@ -47,7 +47,7 @@ export class SportsGame{
   $('start').onclick=()=>this.start();$('continue').onclick=()=>this.start(true);$('home').onclick=()=>this.active?this.pause(true):null;
   $('pause').onclick=()=>this.physics.finished?this.result():this.pause();$('help').onclick=()=>this.help();$('dialog-close').onclick=()=>this.closeDialog();
   this.dialog.addEventListener('cancel',e=>{e.preventDefault();this.closeDialog();});
-  $('focus-mode').onclick=()=>{this.world.dof.enabled=!this.world.dof.enabled;try{localStorage.setItem('wanbu-dof',this.world.dof.enabled?'on':'off');}catch{}this.syncFocus();};this.syncFocus();
+  $('focus-mode').onclick=()=>{this.world.cyclePixelMode();this.syncFocus();};this.syncFocus();
   const jumping=['Space','ArrowUp','KeyW'];
   addEventListener('keydown',e=>{
    if(e.code==='Escape'){e.preventDefault();if(this.soundControls.opened){this.soundControls.close();return;}if(this.dialog.open){this.closeDialog();return;}if(this.active)this.pause();return;}
@@ -71,7 +71,7 @@ export class SportsGame{
   // Keep keyboard navigation inside the nonmodal sound panel while it pauses play.
   document.addEventListener('keydown',e=>{if(e.key!=='Tab'||!this.soundControls.opened)return;const items=[...$('sound-panel').querySelectorAll('button,input')].filter(el=>!el.classList.contains('hidden'));const i=items.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();items.at(-1).focus();}else if(!e.shiftKey&&i===items.length-1){e.preventDefault();items[0].focus();}});
  }
- syncFocus(){$('focus-mode').setAttribute('aria-pressed',String(this.world.dof.enabled));$('focus-mode').setAttribute('aria-label',this.world.dof.enabled?'关闭景深':'开启景深');}
+ syncFocus(){$('focus-mode').setAttribute('aria-pressed',String(this.world.pixelOptions.mode==='fine'));$('focus-mode').setAttribute('aria-label',this.world.pixelLabel+'，点击切换像素颗粒');}
  showDialog(content){this.wasPaused=this.paused;this.paused=true;this.clearInput();$('dialog-content').innerHTML=content;this.session.decorate($('dialog-content'),this.physics.finished);if(!this.dialog.open)this.dialog.showModal();}
  closeDialog(){this.dialog.close();this.paused=false;this.clearInput();if(this.active)this.world.canvas.focus();else $('start').focus();}
  pause(force=false){

@@ -1,3 +1,4 @@
+import {arrivalCameraX} from '../pixel/config.js';
 import {makeEquipmentWorld} from '../equipment/world.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {makeArrivalRoom,attachArrivalBuilding,updateArrival} from '../arrival/world.js';
@@ -176,7 +177,7 @@ export class CampusWorld extends MetroidWorld{
   }
  }
  render(){if(this.combatState){const s=this.combatState;this.slash.visible=false;this.combatView?.update(s);const front=s.roomId==='arrival';this.sun.intensity=front?3.1:3.8;this.scene.background.set(front?0xd1d7c4:0xc6cfc4);this.architecture.visible=!front;this.foreground.visible=!front;this.dof.blurScale=front?.32:.75;this.renderer.toneMappingExposure=front?.84:.88;
-   if(front){const aspect=innerWidth/innerHeight,p=s.player,overview=this.arrivalOverview;const width=overview?Math.max(150,70*aspect):aspect<1?19:42;this.setFrustum(width/aspect);const focus=overview?new V(51,18,-21):new V(THREE.MathUtils.clamp(p.x+4,17,90),Math.max(3.5,p.y+2.5),-1);this.camera.position.copy(focus).add(overview?new V(11,28,65):new V(0,9.5,34));this.camera.lookAt(focus);this.camera.updateMatrixWorld();this.dof.focusDistance=-new V(p.x,p.y+1,0).applyMatrix4(this.camera.matrixWorldInverse).z;this.dof.update(0,overview?focus:new V(p.x,p.y+1,0),true,this.renderer.getPixelRatio());this.dof.uniforms.focusBand.value=overview?40:13;this.dof.uniforms.farFalloff.value=100;this.sun.position.set(focus.x-20,38,25);this.sun.target.position.set(focus.x,0,-12);this.sun.target.updateMatrixWorld();}
+   if(front){const aspect=innerWidth/innerHeight,p=s.player,overview=this.arrivalOverview;const width=overview?Math.max(150,70*aspect):aspect<1?19:42;this.setFrustum(width/aspect);const focus=overview?new V(51,18,-21):new V(arrivalCameraX(p.x,width,aspect<1),Math.max(3.5,p.y+2.5),-1);this.camera.position.copy(focus).add(overview?new V(11,28,65):new V(0,9.5,34));this.camera.lookAt(focus);this.camera.updateMatrixWorld();this.dof.focusDistance=-new V(p.x,p.y+1,0).applyMatrix4(this.camera.matrixWorldInverse).z;this.dof.update(0,overview?focus:new V(p.x,p.y+1,0),true,this.renderer.getPixelRatio());this.dof.uniforms.focusBand.value=overview?40:13;this.dof.uniforms.farFalloff.value=100;this.sun.position.set(focus.x-20,38,25);this.sun.target.position.set(focus.x,0,-12);this.sun.target.updateMatrixWorld();}
   }super.render();}
  updateExpedition(dt,state){
   this.combatState=state;updateArrival(this,state);

@@ -1,3 +1,6 @@
+import {Vector3} from 'three';
+import {PIXEL_MODES} from '../pixel/config.js';
+import {actionHint,routeTarget,CollectionChain} from '../pixel/experience.js';
 import {SHOES} from '../equipment/state.js';
 import {createShoeTrial} from '../equipment/trial.js';
 import {showShoeShop} from '../equipment/shop.js';
@@ -18,14 +21,14 @@ export class CampusGame{
   this.state=new CampusState(saved);this.returned=[];this.pendingReturn=new URLSearchParams(location.search).get('resume')==='world';
   if(persistent)for(const id of Object.keys(ACTIVITIES))try{const proof=JSON.parse(localStorage.getItem(ACTIVITIES[id].key));if(this.state.acceptActivity(id,proof))this.returned.push(id);if(this.state.activeChallenge===id&&completedActivity(id,proof,this.state.runId))this.state.activeChallenge=null;}catch{}
   this.labReturned=this.returned.includes('lab');this.keys=new Set();this.holds=new Map();this.queued={};this.active=false;this.paused=false;this.clock=0;this.uiClock=0;this.toastTime=0;this.knownStamps=new Set(this.state.stamps);
-  this.audio=new AudioEngine({scene:'explore'});this.bind();this.refresh();this.state.drain();
+  this.collectionChain=new CollectionChain();this.audio=new AudioEngine({scene:'explore'});this.bind();this.refresh();this.state.drain();
   $('start').disabled=false;const pending=this.state.activeChallenge;$('start').textContent=pending&&!this.pendingReturn?'继续第 '+ACTIVITIES[pending].number+' 章 · '+ACTIVITIES[pending].title+' →':saved?'继续万步冒险 →':'和小步一起出发 →';$('loading').textContent='九章连续冒险 · 检查点自动保存';if(pending&&!this.pendingReturn){const b=el('button','secondary','先回园区');b.onclick=()=>{this.pendingReturn=true;$('start').click();};$('start').after(b);}if(this.pendingReturn)queueMicrotask(()=>$('start').click());
  }
  playable(){return this.active&&!this.cinematic&&!this.paused&&!document.hidden;}
- clear(){this.keys.clear();this.holds.clear();this.queued={};this.tapUntil=0;this.tapJumpUntil=0;this.state.attackQueued=false;}
+ clear(){this.keys.clear();this.holds.clear();this.queued={};this.tapUntil=0;this.tapJumpUntil=0;this.state.attackQueued=false;this.state.attackBuffer=0;this.state.player.jumpBuffer=0;}
  bind(){
   $('ceremony-skip').onclick=()=>this.endCeremony();
-  $('start').onclick=()=>{if(this.state.activeChallenge&&!this.pendingReturn){location.href=activityURL(this.state.activeChallenge);return;}if(this.pendingReturn)this.state.activeChallenge=null;this.active=true;$('intro').hidden=true;$('hud').hidden=false;for(const id of ['passport-button','map-button','menu'])$(id).disabled=false;this.audio.start();this.world.canvas.focus();this.toast(this.state.stamps.length||this.state.visited.size>1?'进度已恢复 · '+this.state.objective():'欢迎，小步。追着金币向右跑，跳过障碍，在大楼门口按 F。');if(this.returned.length){const c=ACTIVITIES[this.returned.at(-1)];this.modal('已带回'+c.reward,c.next,[['继续冒险',()=>this.resume(),true],['查看九章路线',()=>this.adventure()]]);this.returned=[];}else if(!this.state.storySeen)this.prologue();this.save();};
+  $('start').onclick=()=>{if(this.state.activeChallenge&&!this.pendingReturn){location.href=activityURL(this.state.activeChallenge);return;}if(this.pendingReturn)this.state.activeChallenge=null;this.active=true;$('intro').hidden=true;$('hud').hidden=false;for(const id of ['passport-button','map-button','menu'])$(id).disabled=false;this.audio.start();this.world.canvas.focus();this.toast(this.state.stamps.length||this.state.visited.size>1?'进度已恢复 · '+this.state.objective():'欢迎，小步。追着金币向右跑，跳过障碍，在大楼门口按 F。');if(this.returned.length){const c=ACTIVITIES[this.returned.at(-1)];this.modal('已带回'+c.reward,c.next,[['继续冒险',()=>this.resume(),true],['查看九章路线',()=>this.adventure()]]);this.returned=[];}else if(!this.state.storySeen)this.welcome();this.save();};
   $('equipment-button').onclick=()=>this.shoeShop();$('trial-exit').onclick=()=>this.endShoeTrial();
   $('interact').onclick=()=>this.interact();$('passport-button').onclick=()=>this.passport();$('map-button').onclick=()=>this.map();$('menu').onclick=()=>this.menu();$('guide-button').onclick=()=>this.map();
   $('close-dialog').onclick=()=>this.resume();$('dialog').addEventListener('cancel',e=>{e.preventDefault();this.resume();});
@@ -77,6 +80,7 @@ export class CampusGame{
   const body=this.modal('第 '+c.number+' 章 · '+c.title,copy[id],[['稍后出发',()=>this.resume()]]);
   const a=el('a','primary lab-entry','进入'+c.title+' →');a.href=activityURL(id);a.onclick=e=>{if(!this.persistent||!this.state.beginChallenge(id)){e.preventDefault();this.toast('请从正式冒险进入本章。');return;}this.save();};body.append(a);
  }
+ welcome(){this.modal('小步的试跑邀请','小步来到上海安踏中心，帮助点点找回散落的能量，点亮五座建筑。先沿门前步道收集 8 枚金币，在大楼门口按 F。',[['开始跑跳 →',()=>{this.state.storySeen=true;this.save();this.resume();},true],['听完整故事',()=>this.prologue()]]);}
  prologue(index=0){const [title,text]=PROLOGUE[index];const finish=()=>{this.state.storySeen=true;this.save();this.resume();this.toast(this.state.roomId==='arrival'?'点点：向右收集金币，长按跳跃越过矮栏，再从大楼门口进入。':'点点：先向右走，到三个建筑模型旁按 F。');};const body=this.modal(title,text,[[index<2?'接着听 →':'带上护照，出发 →',index<2?()=>this.prologue(index+1):finish,true],...(index<2?[['先开始探索',finish]]:[])]);body.prepend(el('p','eyebrow','万步之光 · 序章 '+(index+1)+' / 3'));}
  adventure(){const chapters=adventureChapters(this.state),next=chapters.find(c=>!c.done);const body=this.modal('小步的旅程日志',`已完成 ${chapters.filter(c=>c.done).length} / 9 章。帮助点点连接五座建筑的光路，让回家的路亮起来。`,[['继续冒险',()=>this.resume(),true],['查看园区地图',()=>this.map()],['重读序章',()=>this.prologue()]]);const list=el('div','journey-list');for(const c of chapters){const row=el('article','journey-step'+(c.done?' done':'')+(c.id===next?.id?' current':''));row.append(el('span','',c.done?'✓':c.number),el('b','',c.title),el('small','',c.description+(c.done?' · '+CHAPTER_STORY[c.id][2]:c.id===next?.id?' · '+CHAPTER_STORY[c.id][1]:'')));list.append(row);}body.append(list);}
  refresh(){
@@ -87,7 +91,7 @@ export class CampusGame{
   $('boss-phase').textContent=guardian.hint;$('boss-cores').textContent=`HP ${guardian.hp} / ${guardian.maxHP} · ${guardian.variant}`;$('boss-hearts').textContent='♥'.repeat(guardian.hearts)+'♡'.repeat(3-guardian.hearts);$('boss-timer').textContent=['windup','stunned'].includes(guardian.phase)?Math.max(0,guardian.timer).toFixed(1)+' s':'';
   $('boss-progress').max=guardian.maxHP;$('boss-progress').value=guardian.hp;$('boss-progress').setAttribute('aria-valuetext',`生命值 ${guardian.hp} / ${guardian.maxHP}`);
   const cooldown=Math.max(0,s.player.attackCooldown),locked=!s.clawUnlocked,unavailable=s.roomId==='arena'&&['failed','defeated','won'].includes(guardian.phase);
-  $('attack').disabled=locked||cooldown>0||unavailable;$('attack').style.setProperty('--charge',`${(1-cooldown/CLAW.cooldown)*100}%`);$('attack-label').textContent=locked?'未解锁':cooldown>0?cooldown.toFixed(1)+'s':'爪击';$('attack').title=locked?'在健身中心训练台领取能量爪击':'J 能量爪击 · 面向目标 · 冷却 0.7 秒';$('attack').setAttribute('aria-label',locked?'能量爪击未解锁':cooldown>0?'能量爪击冷却中':'能量爪击 J');
+  $('attack').disabled=locked||unavailable;$('attack').style.setProperty('--charge',`${(1-cooldown/CLAW.cooldown)*100}%`);$('attack-label').textContent=locked?'未解锁':cooldown>0?cooldown.toFixed(1)+'s':'爪击';$('attack').title=locked?'在健身中心训练台领取能量爪击':'J 能量爪击 · 面向目标 · 冷却 0.7 秒';$('attack').setAttribute('aria-label',locked?'能量爪击未解锁':cooldown>0?'能量爪击冷却中':'能量爪击 J');
   $('place').textContent=s.room.name;$('place-sub').textContent=s.room.subtitle;
   $('chapter-number').textContent=s.finished?'JOURNEY COMPLETE':'CHAPTER '+next.number+' / 09';
   $('chapter-title').textContent=s.finished?'世界，因相遇而连接':next.title;
@@ -98,7 +102,7 @@ export class CampusGame{
   $('ability-status').textContent=`${s.progress.dash?'✓':'○'} 冲刺  ·  ${s.progress.doubleJump?'✓':'○'} 二段跳  ·  ${s.progress.echoCollar?'✓':'○'} 回声  ·  ${s.clawUnlocked?'✓':'○'} 爪击`;
   $('jump-help').textContent=s.progress.doubleJump?'空中松开再按，可二段跳':'长按跳跃，跳得更高';
   const echo=s.echo;const pad=s.room.relay;
-  $('echo-status').hidden=!s.progress.echoCollar||s.roomId==='arena';
+  $('echo-status').hidden=!s.progress.echoCollar||s.roomId==='arena'||(!pad&&echo.phase==='idle');
   $('echo-status').textContent=echo.phase==='record'?`● 正在记录 ${echo.remaining.toFixed(1)}s · 再按 E 留下回声`:echo.phase==='replay'?`回声 ${echo.remaining.toFixed(1)}s${pad&&!s.progress.relayOpen?' · 双点同步 '+s.relay.hold.toFixed(1)+' / 1.1s':''}`:s.progress.relayOpen?'✓ 双点通道已打开 · E 可再次记录':'E 记录 → 停留片刻 → E 释放 → 前往另一圆盘';
   $('echo').firstChild.textContent=echo.phase==='record'?'释放 ':'回声 ';
   this.refreshArrival();this.refreshShoes();
@@ -164,13 +168,15 @@ export class CampusGame{
  }
  menu(){
   if(this.shoeTrial){this.modal('试穿暂停','试穿不消耗金币，也不会改变主线进度。',[['继续试穿',()=>this.resume(),true],['结束试穿',()=>this.endShoeTrial()]]);return;}
-  const body=this.modal('在这里，稍作停留。','进度自动保存在当前浏览器。跌落会回到最近的安全落脚点。冲刺、二段跳和回声需要沿主线获得；开启花园捷径后可回访已探索区域。',[['继续旅程',()=>this.resume(),true],['故事与九章日志',()=>this.adventure()],['万步护照',()=>this.passport()],['运动装备 · 金币商店',()=>this.shoeShop()],['逐光启程',()=>this.arrivalGuide()],['体育回路导览',()=>this.circuitGuide()],['操作帮助',()=>this.help()],['重新开始',()=>this.confirmReset()]]);
+  const body=this.modal('在这里，稍作停留。','进度自动保存在当前浏览器。跌落会回到最近的安全落脚点。冲刺、二段跳和回声需要沿主线获得；开启花园捷径后可回访已探索区域。',[['继续旅程',()=>this.resume(),true],['故事与九章日志',()=>this.adventure()],['万步护照',()=>this.passport()],['运动装备 · 金币商店',()=>this.shoeShop()],['逐光启程',()=>this.arrivalGuide()],['体育回路导览',()=>this.circuitGuide()],['像素画面设置',()=>this.pixelSettings()],['卡住了 · 返回安全位置',()=>{if(this.state.returnToSafeSpot()){this.events();this.resume();this.save();this.toast('已回到安全落脚点 · 金币与进度保留');}else this.toast('训练中请先结束或退出当前训练');}],['操作帮助',()=>this.help()],['重新开始',()=>this.confirmReset()]]);
   if(this.state.guardian.active){const b=el('button','','退出本次训练');b.onclick=()=>{this.state.retreatGuardian();this.events();this.resume();};body.append(b);}if(this.state.finished){const b=el('button','','重看点亮庆典');b.onclick=()=>this.beginCeremony();body.append(b);}body.append(el('p','muted','跟随发光足迹，亲自连接每一个空间。故事、机关与训练装置共同构成小步的冒险。'));
 
  }
+ pixelSettings(){const body=this.modal('像素画面设置','所有关卡共享像素颗粒设置。文字与按钮保持清晰；设置立即生效，并在本机记住。',[['继续游戏',()=>this.resume(),true]]);const row=el('div','pixel-choice');body.append(row);for(const [id,p]of Object.entries(PIXEL_MODES)){const b=el('button','',p.name);b.setAttribute('aria-pressed',String(this.world.pixelOptions.mode===id));b.onclick=()=>{this.world.setPixelMode(id);this.pixelSettings();};row.append(b);}body.append(el('p','pixel-note','经典像素：均衡清晰度与颗粒感。细腻像素适合寻找密室微光，大颗粒像素适合复古画面。'));}
  help(){this.modal('小步的探索手册','A / D 或方向键左右移动；空格跳跃，空中松开后再按一次可二段跳；Shift 向前冲刺；F 与近处装置互动。在健身中心领取爪击后，按 J（触屏点「爪击」）发动能量爪击，冷却 0.7 秒。面向并靠近 Boss 攻击；核心露出时伤害翻倍，空中也可攻击。E 记录足迹，再按 E 释放回声；停在第一个圆盘记录后，让小步走到另一圆盘。冲刺、二段跳、回声按主线逐步解锁。P 打开护照，M 打开地图，Esc 暂停。触屏长按方向与跳跃按钮可以组合操作。踩中发光圆环可收集足迹或运动信号；消息牌与装置需要靠近后互动。',[['知道了，出发',()=>this.resume(),true]]);}
  confirmReset(){this.modal('重新走一遍同心之旅？','这会重置当前主线的金币、场馆、Boss、能力、印章、地图与四个主线关卡的检查点。v3.7 和各独立模式的存档保留。',[['保留旅程',()=>this.menu(),true],['重新出发',()=>{this.state=new CampusState();if(this.persistent)try{for(const a of Object.values(ACTIVITIES)){localStorage.removeItem(a.key);localStorage.removeItem(a.key+'-best');}}catch{}this.knownStamps.clear();this.dotsKey=null;this.world.currentRoom=null;this.save();this.resume();this.refresh();this.prologue();}]]);}
  events(){for(const e of this.state.drain()){
+  if(e.type==='coin')this.collectionChain.add(e.value||1);
   if(this.shoeTrial&&['save','circuit-effect','circuit-failed','ability'].includes(e.type))continue;
   if(e.type==='equipment'){this.audio.collect();this.toast(e.text);continue;}
   if(e.type==='save')this.save();
@@ -214,6 +220,11 @@ export class CampusGame{
   else if(e.type==='story')this.story(e.kind);
   else if(e.type==='station'){if(e.kind==='echo-help')this.modal('一只小步，两个足迹。',this.state.progress.echoCollar?'站上 01 圆盘，按 E 开始记录。在盘上停留至少半秒，再按 E 释放；回声留在这里，让小步走到 02 圆盘。两者同时站稳 1.1 秒即可开门。':'先从左侧进入研发区。找出科技密室的四枚 A N T A 字母，走出光门取得回声项圈，再返回这里。',[['继续探索',()=>this.resume(),true]]);else if(e.kind==='shoe-shop')this.shoeShop();else if(e.kind==='roots')this.roots();else if(e.kind==='water')this.water();else if(e.kind==='relay')this.enterActivity('relay');else this.story(e.kind);}
  }}
+ pixelHUD(){
+  const coach=$('pixel-coach'),chain=$('pixel-chain'),marker=$('pixel-target');if(!coach)return;const visible=this.active&&!this.paused&&!this.cinematic;coach.hidden=!visible;coach.textContent=actionHint(this.state);chain.hidden=!visible||this.collectionChain.remaining<=0;chain.textContent=this.collectionChain.text;
+  const t=routeTarget(this.state);marker.hidden=!visible||!t||this.shoeTrial||this.state.finished||this.state.guardian.active||this.state.circuit.fighting;
+  if(!marker.hidden){const p=this.world.project(new Vector3(t.x,t.y+2.7,.2)),d=Math.abs(this.state.player.x-t.x);marker.textContent=(p.x<40?'◀ ':p.x>innerWidth-40?'▶ ':'◆ ')+t.label+(d>2?' · '+Math.round(d)+'m':'');const floor=innerWidth<700?300:260;marker.style.left=Math.max(110,Math.min(innerWidth-110,p.x))+'px';marker.style.top=Math.max(floor,Math.min(innerHeight-190,p.y))+'px';}
+ }
  refreshCircuit(){
   const s=this.state,c=s.circuit,visible=!!CIRCUIT_ROOMS[s.roomId],node=$('circuit-status');if(!node)return;node.hidden=!visible;$('hud').classList.toggle('in-circuit',visible);$('hud').classList.toggle('circuit-fight',s.roomId==='court');
   const text=s.roomId==='court'?c.status:s.roomId==='energy'&&!c.run?'跑台充能 '+Math.round(c.runTime/1.1*100)+'%':s.roomId==='energy'&&c.done?(c.medal?'✓ 回访奖牌已收入护照':'回访挑战 ↑ 高处奖牌需要二段跳'):s.roomId==='pool'?(c.poolSwitch?'水位 '+Math.round(c.water*100)+'% · 跳向右岸':'球在左岸 · 面向右方按 J 击球'):s.roomId==='cafe'?(c.partner?PARTNERS[c.partner].title+' 已同行':'补给后，邀请伙伴一起出发'):c.objective()[4];
@@ -229,10 +240,10 @@ export class CampusGame{
  refreshArrival(){const s=this.state,on=s.roomId==='arrival';$('hud').classList.toggle('in-arrival',on);$('hud').classList.toggle('in-lobby',s.roomId==='hub');$('coin-count').parentElement.lastChild.textContent=on?' / 29 金币':' 累计足迹币';if(!on)return;$('chapter-title').textContent='逐光启程';$('chapter-number').textContent='01 / START AT THE CENTRE';$('journey-progress').textContent='跳跃 · 收集 · 找到大楼入口';$('coin-count').textContent=s.arrival.coins.size;$('wallet-count').textContent='入楼目标 8 枚';$('jump-help').textContent='按住跳得更远 · 从上方踩落训练球';}
  circuitGuide(){const s=this.state,body=this.modal('体育回路 · 一次动作，许多答案','健身中心 → 恒温泳池 → 篮球训练馆 → 能量餐厅 → 健身近路。先用 J 击球开路，再用同一个动作反弹来球。带着二段跳回来，找高处的奖牌。',[['查看地图',()=>this.map(),true],['继续冒险',()=>this.resume()]]);if(s.sites.size===3&&!s.guardian.active&&!s.circuit.fighting){const b=el('button','primary','前往健身中心');b.onclick=()=>{s.enter('energy',4,0);this.events();this.resume();this.save();};body.append(b);}else body.append(el('p','','先连接大堂三地节点，或完成正在进行的训练。'));}
  update(dt){
-  this.updateCeremony(dt);
+  this.updateCeremony(dt);if(this.playable())this.collectionChain.tick(dt);
   if(this.playable()){this.state.update(dt,this.input());this.queued={};this.events();if(this.shoeTrial){this.shoeTrial.remaining-=dt;const c=this.state.circuit;if(c.phase==='failed'||c.phase==='intermission'){c.hearts=3;c.startPhase('runner',this.state);this.state.player.x=18;this.state.claw=null;}if(this.shoeTrial.remaining<=0)this.endShoeTrial();}else this.checkStamps();this.clock+=dt;if(this.clock>5){this.clock=0;this.save();}}
   this.uiClock+=dt;if(this.uiClock>.1){this.refresh();this.uiClock=0;}this.toastTime-=dt;if(this.toastTime<=0)$('toast').classList.remove('show');
-  this.world.arrivalOverview=!this.active&&this.state.roomId==='arrival';this.world.updateExpedition(Math.min(dt,.05),this.state);
+  this.world.arrivalOverview=!this.active&&this.state.roomId==='arrival';this.world.updateExpedition(this.paused?0:Math.min(dt,.05),this.state);this.pixelHUD();
  }
 }
 if(document.body.dataset.qa!=='true')try{

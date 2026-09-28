@@ -76,7 +76,7 @@ export class Expedition{
   this.emit('room',{id});this.emit('save');
  }
  update(dt,input={}){
-  this.input=input;if(input.jumpPressed)this.player.jumpBuffer=.15;
+  this.input=input;if(input.jumpPressed)this.player.jumpBuffer=.17;
   if(input.echoPressed)this.useEcho();if(input.dashPressed)this.dash();if(input.pulsePressed)this.pulse();if(input.healPressed)this.heal();if(input.interactPressed)this.interact();
   this.accumulator+=Math.min(.08,Math.max(0,dt));
   while(this.accumulator>=STEP){this.step(STEP);this.accumulator-=STEP;}
@@ -99,7 +99,7 @@ export class Expedition{
   const p=this.player,inp=this.input;
   for(const k of ['jumpBuffer','dashCooldown','attackCooldown','attackTime','invulnerable','hurtTime','pulseCooldown','healCooldown'])p[k]=Math.max(0,p[k]-dt);
   if(inp.attack)this.attack();
-  p.coyote=p.grounded?.12:Math.max(0,p.coyote-dt);
+  p.coyote=p.grounded?.14:Math.max(0,p.coyote-dt);
   if(p.jumpBuffer>0&&p.hurtTime===0){
    if(p.coyote>0){p.vy=JUMP;p.grounded=false;p.coyote=0;p.jumpBuffer=0;this.emit('jump');}
    else if(this.progress.doubleJump&&!p.airJump){p.vy=JUMP;p.airJump=true;p.jumpBuffer=0;this.emit('double-jump',{x:p.x,y:p.y});}

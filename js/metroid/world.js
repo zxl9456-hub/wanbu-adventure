@@ -14,7 +14,7 @@ const V=THREE.Vector3;
 export class MetroidWorld extends PortalWorld{
  constructor(canvas,{rooms=ROOMS}={}){
   super(canvas);this.rooms=rooms;this.roomViews={};this.currentRoom=null;this.stone=this.ivory;this.treeTexture=null;this.scene.background.set(0xc6cfc4);
-  this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));this.renderer.toneMappingExposure=.88;this.sun.intensity=3.8;this.bloom.strength=.19;this.dof.blurScale=.9;this.dof.enabled=true;
+  this.renderer.setPixelRatio(1);this.renderer.toneMappingExposure=.88;this.sun.intensity=3.8;this.bloom.strength=.19;this.dof.blurScale=.9;this.dof.enabled=true;
   this.cameraOffset.set(0,5.8,32);this.particles=[];this.enemyViews=new Map();this.waveViews=[];this.flash=0;this.telemetry=[];this.telemetryClock=0;
  }
  async load(report=()=>{}){

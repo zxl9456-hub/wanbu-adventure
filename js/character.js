@@ -20,7 +20,7 @@ export class PixelCorgi{
    else{diffuseColor.rgb=floor(diffuseColor.rgb*18.+.5)/18.;${echo?'diffuseColor.rgb*=.8+.2*sin(vMapUv.y*225.);':''}}
   `);};material.customProgramCacheKey=()=>echo?'pixel-echo-v36':'pixel-corgi-v36';
   this.sprite=new THREE.Sprite(material);this.sprite.scale.set(3.8,3.8,1);this.sprite.center.set(.5,.27);this.root.add(this.sprite);
-  const cv=document.createElement('canvas');cv.width=cv.height=64;const ctx=cv.getContext('2d');const gr=ctx.createRadialGradient(32,32,0,32,32,31);gr.addColorStop(0,echo?'rgba(77,239,229,.45)':'rgba(22,35,28,.38)');gr.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gr;ctx.fillRect(0,0,64,64);
+  const cv=document.createElement('canvas');cv.width=cv.height=64;const ctx=cv.getContext('2d');ctx.fillStyle=echo?'rgba(99,183,178,.28)':'rgba(23,38,56,.28)';ctx.fillRect(8,20,48,24);ctx.fillRect(16,12,32,40);ctx.fillStyle=echo?'rgba(155,224,200,.32)':'rgba(23,38,56,.32)';ctx.fillRect(16,20,32,24);
   const shadow=new THREE.Mesh(new THREE.PlaneGeometry(2.8,1.6),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthWrite:false,toneMapped:false}));shadow.rotation.x=-Math.PI/2;shadow.position.y=.025;this.root.add(shadow);
   this.mixer=new THREE.AnimationMixer(this.model);this.actions={};gltf.animations.forEach(clip=>{this.actions[clip.name]=this.mixer.clipAction(clip)});this.current=null;this.play('Idle');this.facing=0;this.lastRender=0;
  }
